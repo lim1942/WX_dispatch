@@ -1,0 +1,7 @@
+1.master_push
+读取本地数据定时向master 推定量任务
+2.WX_master
+运行在linux上的master服务，用于调度
+3.WX_slave
+运行在windows vps上的从机，从master取任务，
+可以用断开拨号的方式提升任务爬取效率
