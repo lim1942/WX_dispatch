@@ -7,6 +7,7 @@
 import os
 import time
 import logging
+from cloghandler import ConcurrentRotatingFileHandler
 from logging.handlers import RotatingFileHandler
 
 from config import LOG_DIR,LOG_SIZE,LOG_BACKUP
@@ -43,7 +44,7 @@ def get_logger(name):
     ensure_dir(fname)
     api_logger = logging.getLogger(fname)
     # stream_handler = logging.StreamHandler()
-    rotating_handler = RotatingFileHandler(
+    rotating_handler = ConcurrentRotatingFileHandler(
         fname, maxBytes=LOG_SIZE * 1024 * 1024, backupCount=LOG_BACKUP)
     formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(funcName)-10s %(message)s')
