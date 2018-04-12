@@ -4,6 +4,7 @@
     redis (2.10.6)
     psycopg2 (2.7.4)
     Flask (0.12.2)
+    ConcurrentRotatingFileHandler(0.9.1)
 
 三.master程序启动
     程序的调度后端为redis,确保redis_server内的redis-server已经用redis.conf启动，
