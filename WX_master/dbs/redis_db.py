@@ -4,7 +4,9 @@ import traceback
 from redis.sentinel import Sentinel
 
 from tools import get_current_day , get_logger, error_record
+#文件中大写的配置均来自config.py
 from config import *
+
 
 redis_db_log = get_logger('redis_db')
 clear_redis_log = get_logger('clear_redis')
@@ -13,32 +15,32 @@ SENTINEL = None
 MASTER = None
 
 
-def get_single_redis_conn():
-    return redis.Redis(host=REDIS_HOST, port=REDIS_PORT,db=0,password=REDIS_PWD)
-
-
-def get_sentinel_redis_conn():
-    return get_master()
-
-
-def get_conn():
-    """return a redis connect object"""
-    
-    # default False
-    if SENTINEL_MONITOR:
-        conn = get_sentinel_redis_conn()
-    else:
-        conn = get_single_redis_conn()
-    return conn
-
-
 class redis_task(object):
 
 
     def __init__(self):
-        self.R = get_conn()
+        self.R = self.get_conn()
         self.P = self.R.pipeline(transaction=False)
         self.test = self.connection_test()
+
+
+    def get_conn(self):
+        """return a redis connect object"""
+        
+        # default False
+        if SENTINEL_MONITOR:
+            conn = self.get_sentinel_redis_conn()
+        else:
+            conn = self.get_single_redis_conn()
+        return conn
+
+
+    def get_single_redis_conn(self):
+        return redis.Redis(host=REDIS_HOST, port=REDIS_PORT,db=0,password=REDIS_PWD)
+
+
+    def get_sentinel_redis_conn(self):
+        return self.get_master()
 
 
     def connection_test(self):
@@ -135,18 +137,20 @@ class redis_task(object):
             for task_id in task_ids:
                 self.P.smove(TASK_DOING, TASK_FINISH, task_id)
             self.P.execute()
-            redis_db_log.info('finish back {} tasks'.format(len(task_ids)))
+            redis_db_log.info('task_finished {} tasks'.format(len(task_ids)))
             return True 
         except Exception as e:
             error_record('106')
             redis_db_log.warning('106:task finished error:{}'.format(e.message))
 
 
-    def task_failed(self,task_id):
+    def task_failed(self,task_ids):
         """move task from doing to failed"""
         try:
-            self.R.smove(TASK_DOING, TASK_FAILED, task_id)
-            return True 
+            for task_id in task_ids:
+                self.P.smove(TASK_DOING, TASK_FAILED, task_id)
+            self.P.execute()
+            redis_db_log.info('task_failed {} tasks'.format(len(task_ids))) 
         except Exception as e:
             error_record('107')
             redis_db_log.warning('107:task failed error :{}'.format(e.message))
@@ -231,46 +235,39 @@ class redis_task(object):
 
 
 
-def get_sentinel(refresh=False):
-    """get a sentinel connection object"""
-    global SENTINEL
-    if refresh :
-        SENTINEL = None
-    if not SENTINEL:
-        try:
-            SENTINEL = Sentinel(
-                SENTINEL_LIST,
-                password=REDIS_PWD,
-                decode_responses=True,
-                socket_timeout=0.1)
-            assert SENTINEL.discover_master(REDIS_MASTER_NAME)
-            assert SENTINEL.discover_slaves(REDIS_MASTER_NAME)
-        except Exception as e:
-            error_record('101')
-            redis_db_log.warning('101:Can not establish a connection to redis DB'.format(e.message))            
-    return SENTINEL
-
-
-def get_master(refresh=False):
-    """get a master instance"""
-    global SENTINEL, MASTER
-    if refresh :
-        MASTER = None
-    if not MASTER :
-        sentinel = get_sentinel()
-        if sentinel:
+    def get_sentinel(self,refresh=False):
+        """get a sentinel connection object"""
+        global SENTINEL
+        if refresh :
+            SENTINEL = None
+        if not SENTINEL:
             try:
-                MASTER = sentinel.master_for(REDIS_MASTER_NAME)
+                SENTINEL = Sentinel(
+                    SENTINEL_LIST,
+                    password=REDIS_PWD,
+                    decode_responses=True,
+                    socket_timeout=0.1)
+                assert SENTINEL.discover_master(REDIS_MASTER_NAME)
+                assert SENTINEL.discover_slaves(REDIS_MASTER_NAME)
             except Exception as e:
                 error_record('101')
-                redis_db_log.warning('101:Can not establish a connection to redis DB'.format(e.message))  
-    return MASTER
+                redis_db_log.warning('101:Can not establish a connection to redis DB'.format(e.message))            
+        return SENTINEL
 
 
+    def get_master(self,refresh=False):
+        """get a master instance"""
+        global SENTINEL, MASTER
+        if refresh :
+            MASTER = None
+        if not MASTER :
+            sentinel = get_sentinel()
+            if sentinel:
+                try:
+                    MASTER = sentinel.master_for(REDIS_MASTER_NAME)
+                except Exception as e:
+                    error_record('101')
+                    redis_db_log.warning('101:Can not establish a connection to redis DB'.format(e.message))  
+        return MASTER
 
-if __name__ == '__main__':
-    c = redis_task()
-    print c.trim_finish_set()
-    print c.trim_failed_set()
-    print c.handle_bad_doing()
 
