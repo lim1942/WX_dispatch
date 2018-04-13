@@ -3,7 +3,7 @@
 # @Email: 940711277@qq.com
 # @Date:  2018-04-02 14:31:54
 # @Last Modified by:  lim
-# @Last Modified time:  2018-04-09 16:11:05
+# @Last Modified time:  2018-04-12 14:17:47
 import psycopg2 
 from tools import get_logger, error_record
 from config import PG_DB ,PG_USER, PG_PWD, PG_HOST, PG_PORT 
@@ -20,6 +20,22 @@ class PgSql(object):
         #self.table_1 = self.create_table_1()
         #self.table_2 = self.create_table_2()
         #self.table_3 = self.create_table_3()
+
+
+    def insert_datas(self,datas):
+        try:
+            for data in datas:
+                channel = data['channel']
+                data_list = data['data_list']
+                if channel == '1':
+                    self.channel_1(data_list)
+                if channel == '2':
+                    self.channel_2(data_list)
+                if channel == '3':
+                    self.channel_3(data_list)
+            return True
+        except:
+            return False
 
 
     def get_conn(self):
@@ -99,9 +115,10 @@ class PgSql(object):
             return True
         except Exception as e:
             self.conn.rollback()
+            if 'duplicate' in e.message:
+                return True
             pd_db_log.warning('201:arror in insert data to pg table one:{}'.format(e.message))
-            if 'duplicate' not in e.message:
-                error_record('201')            
+            error_record('201')            
 
 
     def channel_2(self,data_list):
@@ -115,9 +132,10 @@ class PgSql(object):
             return True
         except Exception as e:
             self.conn.rollback()
+            if 'duplicate' in e.message:
+                return True            
             pd_db_log.warning('202:Error in insert data to pg table two:{}'.format(e.message))
-            if 'duplicate' not in e.message:
-                error_record('202')
+            error_record('202')
 
 
     def channel_3(self,data_list):
@@ -133,7 +151,8 @@ class PgSql(object):
             return True
         except Exception as e:
             self.conn.rollback()
+            if 'duplicate' in e.message:
+                return True            
             pd_db_log.warning('203:Error in insert data to pg table three:{}'.format(e.message))
-            if 'duplicate' not in e.message:
-                error_record('203')
+            error_record('203')
 
