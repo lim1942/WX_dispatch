@@ -3,7 +3,7 @@
 # @Email: 940711277@qq.com
 # @Date:  2018-03-01 14:45:22
 # @Last Modified by:  lim
-# @Last Modified time:  2018-04-11 10:23:22
+# @Last Modified time:  2018-04-12 14:51:40
 
 import os
 import sys 
@@ -21,6 +21,7 @@ if not os.path.exists(SAVE_PATH):
     os.makedirs('data')
 
 AES_ENCRYPT = None
+BUFFER_LIST = []
 
 
 class AesEncrypt():  
@@ -49,6 +50,7 @@ class AesEncrypt():
             self.ciphertext = cryptor.encrypt(field)  
             field = base64.b64encode(self.ciphertext).strip()
             return field
+            
     def decrypt(self, field):  
         cryptor = AES.new(self.key, self.mode, self.iv)  
         plain_text = cryptor.decrypt(base64.b64decode(field))  
@@ -112,33 +114,39 @@ def get_crawl_date():
 
 def channel_1(data_list):
     """连接插入 pg的表 1"""
-    headers = {'channel':'1'}
     data_list.append(get_crawl_date())
-    channel(data_list, headers)
+    data = {'channel':'1','data_list':data_list}
+    channel(data)
 
 
 def channel_2(data_list):
     """连接插入 pg的表 2"""
-    headers = {'channel':'2'}
     data_list.append(get_crawl_date())
-    channel(data_list, headers)
+    data = {'channel':'2','data_list':data_list}
+    channel(data)
 
 
 def channel_3(data_list):
     """连接插入 pg的表 3"""
-    headers = {'channel':'3'}
     data_list.append(get_crawl_date())
-    channel(data_list, headers)
+    data = {'channel':'3','data_list':data_list}
+    channel(data)
 
 
-def channel(data_list,headers,retry=5):
+def channel(data,retry=5):
     """向广州插入数据"""
-    while  retry:
+    
+    global BUFFER_LIST
+    BUFFER_LIST.append(data)
+    emit_list = BUFFER_LIST
+    BUFFER_LIST = []
+
+    headers = {'secret':SECRET}
+    url = 'http://{}:{}/save_data_to_guangzhou'.format(MASTER_IP,MASTER_PORT)
+    while retry:
         try:
-            headers.update({'secret':SECRET})
-            url = 'http://{}:{}/save_data_to_guangzhou'.format(MASTER_IP,MASTER_PORT)
-            r = requests.get(url,headers=headers,json=data_list,timeout=10)
-            if r.status_code ==200:
+            r = requests.get(url,headers=headers,json=emit_list,timeout=10)
+            if r.status_code == 200 and r.json()['msg'] == 'success':
                 return True
             else:
                 raise Exception('error')
@@ -146,25 +154,16 @@ def channel(data_list,headers,retry=5):
             time.sleep(3)
             retry -=1
 
-    if not retry:
+    BUFFER_LIST.extend(emit_list)
+    if len(BUFFER_LIST) >= 100:
         error_record('201')
-        get_logger('guangzhou_api').warning('201:Can not insert data to guangzhou db:{}'.format(e.message))
+        get_logger('guangzhou_api').warning('201:Too many time can`t insert '
+            'data to guangzhou db:{}'.format(e.message))
 
 
 def aes_1(field):
     """广州aes加密"""
     return field
-    # if not field:
-    #     return ''
-    # headers = {'secret':'123456789','field':field}
-    # url = 'http://{}:{}/get_aes_from_guangzhou'.format(MASTER_IP,MASTER_PORT)
-    # try:
-    #     field = requests.get(url,headers=headers,timeout=10).json()
-    #     return field
-    # except Exception as e:
-    #     get_logger('guangzhou_api').warning('Can not insert data to guangzhou db {}'.format(e.message))
-    #     print(e)
-        # return ''
 
 
 def aes_2(field):
@@ -214,7 +213,6 @@ def save_file(filename,file,head):
         print(e)
 
 
-
 #for log ------------------------
 def get_log_file_name(fname, log_dir=LOG_DIR):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), log_dir, fname + '.log')
@@ -238,18 +236,14 @@ def get_logger(name):
     fname = get_log_file_name(name)
     ensure_dir(fname)
     api_logger = logging.getLogger(fname)
-    # stream_handler = logging.StreamHandler()
     rotating_handler = RotatingFileHandler(
         fname, maxBytes=LOG_SIZE * 1024 * 1024, backupCount=LOG_BACKUP)
     formatter = logging.Formatter(
         '%(asctime)s %(name)-12s %(levelname)-8s %(funcName)-10s %(message)s')
-    # stream_handler.setFormatter(formatter)
     rotating_handler.setFormatter(formatter)
-    # logger.addHandler(stream_handler)
     api_logger.addHandler(rotating_handler)
     api_logger.setLevel(logging.DEBUG)
     return api_logger
-
 
 
 def error_record(code):
@@ -259,8 +253,9 @@ def error_record(code):
 
 
 
-# if __name__ == '__main__':
-#     print channel(['34082293061260112we','156463ew54863',u'本人',u'李华','','1','2018-04-04'], {'channel':'1'})
-     # print aes_2('test')
-     # a = AesEncrypt()
-     # print a.decrypt('NVqHReeCIT2SsVLzlkAQCuPFlkq+0iNLr+uXjGRvNJgkPyw4et1h1HTltNhG9fjId0+5uHFcKOaARZ4c+JPRkg==')
+if __name__ == '__main__':
+     a = AesEncrypt()
+     test = 'abcd'
+     print test
+     print a.encrypt(test)
+     print a.decrypt(test)
