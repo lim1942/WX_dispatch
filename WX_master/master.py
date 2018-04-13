@@ -210,19 +210,21 @@ def back_taskids():
         abort(403,'results is wrong')
         
     task_ids_finish = task_ids['finish']
-    CURSOR.task_finished(task_ids_finish)
+    r1 = CURSOR.task_finished(task_ids_finish)
 
     task_ids_failed = task_ids['failed']
-    for task_id in task_ids_failed:
-        try:
-            CURSOR.task_failed(task_id)
-        except:
-            pass    
+    r2 = CURSOR.task_failed(task_ids_failed)
 
-    return jsonify({
-        'code': '1',
-        'msg': 'success',
-        'timestamp': get_current_timestamp()})
+    if r1 or r2:
+        return jsonify({
+            'code': '1',
+            'msg': 'success',
+            'timestamp': get_current_timestamp()})
+    else:
+        return jsonify({
+            'code': '0',
+            'msg': 'failed',
+            'timestamp': get_current_timestamp()})
 
 
 @app.route('/save_data_to_guangzhou',methods=['GET', 'POST'])
@@ -234,20 +236,11 @@ def save_data_to_guangzhou():
     if not secret or secret != SECRET:
         abort(403, 'bad secret')
 
-    channel = request.headers.get('channel', '')
-    if not channel or channel not in '123':
-        abort(403, 'bad pram')
-
-    data_list = request.get_json()   
-    if not isinstance(data_list,list):
+    datas = request.get_json()   
+    if not isinstance(datas,list):
         abort(403,'bad data')
 
-    if channel == '1':
-        state_of_insert = PG.channel_1(data_list)
-    elif channel == '2':
-        state_of_insert = PG.channel_2(data_list)
-    elif channel == '3':
-        state_of_insert = PG.channel_3(data_list)
+    state_of_insert = PG.insert_datas(datas)
 
     if state_of_insert:
         return jsonify({
