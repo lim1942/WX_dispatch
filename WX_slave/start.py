@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 import os
 import time
@@ -43,8 +43,8 @@ def back_taskids():
     Q_FINISH_length = len(Q_FINISH)
     Q_FAILED_length = len(Q_FAILED)
 
-    print (get_datetime()+'  tasks finish {} ; tasks '
-        'failed {}'.format(Q_FINISH_length,Q_FAILED_length))
+    print (get_datetime()+'   **** tasks finish {} ; tasks '
+        'failed {} ****'.format(Q_FINISH_length,Q_FAILED_length))
 
     if  (Q_FAILED_length+Q_FINISH_length) < 1000:
         return
@@ -54,8 +54,8 @@ def back_taskids():
         url = 'http://'+MASTER_IP+':'+MASTER_PORT+'/back_taskids'
         r = requests.get(url, headers=headers,json=data)
         if r.status_code == 200 and r.json()['msg'] == 'success':
-            msg = '  success back finish:{} failed:{} taskid to '\
-                'master...'.format(len(Q_FINISH),len(Q_FAILED))
+            msg = '  >>>>>>> success back finish:{} failed:{} taskid to '\
+                'master...\n'.format(len(Q_FINISH),len(Q_FAILED))
             print(get_datetime()+msg); tasks_log.info(msg)
             Q_FINISH = [];Q_FAILED = []
         else:
@@ -88,11 +88,11 @@ def get_tasks():
 
     tasks = tasks.get('tasks',[])
     if len(tasks)>0:
-        msg = '  success get {} tasks from master'.format(len(tasks))
+        msg = '   success get {} tasks from master  <<<<<<<<<\n'.format(len(tasks))
         print(get_datetime()+msg); tasks_log.info(msg)        
         map(lambda task:Q_TASK.append(task),tasks)
     else:
-        msg = '  Master is empty,sleep 120s to get again...'
+        msg = '   Master is empty,sleep 120s to get again  <<<<<<<<<\n'
         print(get_datetime()+msg); tasks_log.error(msg)        
         time.sleep(120)
 
@@ -176,7 +176,8 @@ def dispatch():
     POOL = pool.Pool(MAX_TASK)
 
     POOL.spawn(loop_system)
-    print(get_datetime()+'  start a process to get tasks...')
+    print(get_datetime()+'  >>> start a coroutines loop_system <<<')
+    print(get_datetime()+'  >>> start many coroutines to doning work <<<\n\n')
     dispatch_log.info('start a process to get tasks...')
 
     while  True:
@@ -185,7 +186,7 @@ def dispatch():
             POOL.spawn(doing,task)
         else:
             time.sleep(5)
-            print(get_datetime()+ '  Q_TASK is empty,nothing to do ...')
+            print(get_datetime()+ '  Q_TASK is empty,nothing to do ............')
         time.sleep(0.01)
 
 
