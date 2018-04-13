@@ -35,9 +35,12 @@ def write_record(line_index):
 
 
 def read_record():
-    with open('record.txt') as f:
-        line_index = int(f.read())
-    return line_index
+    try:
+        with open('record.txt') as f:
+            line_index = int(f.read())
+        return line_index
+    except:
+        return 0
 
 
 def generate(line_index):
